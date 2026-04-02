@@ -312,11 +312,12 @@ def generate_pipeline_data(config: GenerationConfig) -> Dict[str, pd.DataFrame]:
     for contact_id, segment, region, industry, engagement_band in contacts[
         ["contact_id", "segment", "region", "industry", "engagement_band"]
     ].itertuples(index=False):
+        lead_timestamp = now - timedelta(days=int(rng.integers(150, 240)))
         lead_rows.append(
             {
                 "contact_id": int(contact_id),
                 "stage": "Lead",
-                "stage_timestamp": now - timedelta(days=int(rng.integers(150, 240))),
+                "stage_timestamp": lead_timestamp,
             }
         )
 
@@ -324,11 +325,13 @@ def generate_pipeline_data(config: GenerationConfig) -> Dict[str, pd.DataFrame]:
         if not contact_clicks:
             continue
 
+        mql_timestamp = lead_timestamp + timedelta(days=int(rng.integers(20, 90)))
+
         lead_rows.append(
             {
                 "contact_id": int(contact_id),
                 "stage": "MQL",
-                "stage_timestamp": now - timedelta(days=int(rng.integers(70, 140))),
+                "stage_timestamp": mql_timestamp,
             }
         )
 
@@ -346,11 +349,13 @@ def generate_pipeline_data(config: GenerationConfig) -> Dict[str, pd.DataFrame]:
         p_convert = _conversion_given_click_rate(segment, campaign["campaign_type"], engagement_band, audience_fit)
 
         if rng.random() < p_convert:
+            sql_timestamp = mql_timestamp + timedelta(days=int(rng.integers(7, 35)))
+            conversion_timestamp = sql_timestamp + timedelta(days=int(rng.integers(1, 14)))
             lead_rows.append(
                 {
                     "contact_id": int(contact_id),
                     "stage": "SQL",
-                    "stage_timestamp": now - timedelta(days=int(rng.integers(20, 80))),
+                    "stage_timestamp": sql_timestamp,
                 }
             )
             conv_rows.append(
@@ -358,7 +363,7 @@ def generate_pipeline_data(config: GenerationConfig) -> Dict[str, pd.DataFrame]:
                     "conversion_id": conversion_id,
                     "contact_id": int(contact_id),
                     "campaign_id": int(campaign_id),
-                    "conversion_timestamp": now - timedelta(days=int(rng.integers(15, 70))),
+                    "conversion_timestamp": conversion_timestamp,
                     "conversion_type": "Demo Booked",
                 }
             )
@@ -404,13 +409,14 @@ def generate_pipeline_data(config: GenerationConfig) -> Dict[str, pd.DataFrame]:
             )
 
             if opp_rows[-1]["stage"] == "Won":
+                revenue_timestamp = conversion_timestamp + timedelta(days=int(rng.integers(7, 30)))
                 rev_rows.append(
                     {
                         "revenue_event_id": revenue_id,
                         "opportunity_id": opportunity_id,
                         "contact_id": int(contact_id),
                         "revenue_amount": round(opp_value * rng.uniform(0.92, 1.08), 2),
-                        "revenue_timestamp": now - timedelta(days=int(rng.integers(1, 30))),
+                        "revenue_timestamp": revenue_timestamp,
                     }
                 )
                 revenue_id += 1

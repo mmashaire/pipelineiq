@@ -6,6 +6,7 @@ from pathlib import Path
 
 import duckdb
 
+from pipelineiq.data_quality import run_data_quality_checks
 from pipelineiq.funnel_metrics import (
     compute_campaign_attribution,
     compute_campaign_performance,
@@ -32,6 +33,7 @@ def main() -> None:
     funnel_kpis = compute_funnel_kpis(data)
     monthly_trends = compute_monthly_trends(data)
     campaign_attribution = compute_campaign_attribution(data)
+    data_quality_checks = run_data_quality_checks(data)
     campaign_perf = compute_campaign_performance(data)
     segment_perf = compute_segment_performance(data)
     region_perf = compute_region_performance(data)
@@ -41,6 +43,7 @@ def main() -> None:
     funnel_kpis.to_csv(output_dir / "funnel_kpis.csv", index=False)
     monthly_trends.to_csv(output_dir / "monthly_trends.csv", index=False)
     campaign_attribution.to_csv(output_dir / "campaign_attribution.csv", index=False)
+    data_quality_checks.to_csv(output_dir / "data_quality_checks.csv", index=False)
     campaign_perf.to_csv(output_dir / "campaign_performance.csv", index=False)
     segment_perf.to_csv(output_dir / "segment_performance.csv", index=False)
     region_perf.to_csv(output_dir / "region_performance.csv", index=False)
@@ -54,6 +57,7 @@ def main() -> None:
         conn.execute("CREATE OR REPLACE TABLE funnel_kpis AS SELECT * FROM funnel_kpis")
         conn.execute("CREATE OR REPLACE TABLE monthly_trends AS SELECT * FROM monthly_trends")
         conn.execute("CREATE OR REPLACE TABLE campaign_attribution AS SELECT * FROM campaign_attribution")
+        conn.execute("CREATE OR REPLACE TABLE data_quality_checks AS SELECT * FROM data_quality_checks")
         conn.execute("CREATE OR REPLACE TABLE campaign_performance AS SELECT * FROM campaign_perf")
         conn.execute("CREATE OR REPLACE TABLE segment_performance AS SELECT * FROM segment_perf")
         conn.execute("CREATE OR REPLACE TABLE region_performance AS SELECT * FROM region_perf")

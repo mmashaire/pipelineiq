@@ -58,3 +58,31 @@ def test_inactive_segment_engages_less_than_active_segments() -> None:
     )
 
     assert inactive_rate < active_average
+
+
+def test_stage_and_conversion_timestamps_follow_funnel_order() -> None:
+    data = generate_pipeline_data(GenerationConfig(n_contacts=900, n_campaigns=12, seed=79))
+
+    leads = data["lead_progression"].copy()
+    lead_rank = {"Lead": 1, "MQL": 2, "SQL": 3}
+    ordered = leads.assign(stage_rank=leads["stage"].map(lead_rank)).sort_values(
+        ["contact_id", "stage_timestamp"]
+    )
+
+    backwards = (
+        ordered.groupby("contact_id")["stage_rank"].apply(lambda series: (series.diff().fillna(0) < 0).sum()).sum()
+    )
+    assert int(backwards) == 0
+
+    sql_stage = (
+        leads.loc[leads["stage"] == "SQL", ["contact_id", "stage_timestamp"]]
+        .groupby("contact_id", as_index=False)
+        .agg(sql_timestamp=("stage_timestamp", "max"))
+    )
+    conversions = data["conversions"].merge(sql_stage, on="contact_id", how="left")
+
+    invalid_conversion_order = (
+        conversions["sql_timestamp"].notna()
+        & (conversions["conversion_timestamp"] < conversions["sql_timestamp"])
+    ).sum()
+    assert int(invalid_conversion_order) == 0

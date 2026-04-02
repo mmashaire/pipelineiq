@@ -11,7 +11,7 @@ This is a public portfolio repository built with synthetic data only. No confide
 ## Current project status
 
 PipelineIQ is now in a solid v1 state.
-It already includes a reproducible synthetic data pipeline, tested funnel metrics, monthly trend reporting, explicit last-touch attribution, decision-support outputs, and a Streamlit dashboard for exploring campaign, segment, region, and campaign-type performance.
+It already includes a reproducible synthetic data pipeline, tested funnel metrics, monthly trend reporting, explicit last-touch attribution, data-quality checks, decision-support outputs, and a Streamlit dashboard for exploring campaign, segment, region, and campaign-type performance.
 
 ## Why this project exists
 
@@ -43,17 +43,29 @@ This is the starting stack, not a permanent rule. If the project needs a differe
 
 ## Dashboard preview
 
-### KPI, funnel, and next-action view
+### Overview and momentum
 
 ![PipelineIQ dashboard overview](docs/images/pipelineiq1.png)
 
-This view gives a quick read on overall revenue, funnel drop-off, and the most practical next actions.
+![PipelineIQ dashboard momentum view](docs/images/pipelineiq2.png)
 
-### Campaign and segment comparison view
+This part of the dashboard highlights the headline KPI readout, current priorities, monthly momentum, and funnel shape so a reviewer can understand the business story in a few seconds.
 
-![PipelineIQ campaign and segment comparison](docs/images/pipelineiq2.png)
+### Recommendations and quality checks
 
-This view makes it easier to see which campaigns are worth repeating and which segments are most valuable.
+![PipelineIQ dashboard recommendations](docs/images/pipelineiq3.png)
+
+![PipelineIQ dashboard quality checks](docs/images/pipelineiq4.png)
+
+This view shows the next-best actions alongside explicit trust checks for IDs, joins, stage order, conversion timing, and revenue integrity.
+
+### Performance and attribution breakdowns
+
+![PipelineIQ dashboard performance tables](docs/images/pipelineiq5.png)
+
+![PipelineIQ dashboard attribution and region view](docs/images/pipelineiq6.png)
+
+These sections make it easier to compare campaigns, segments, regions, and campaign types while also showing which campaigns receive won-revenue credit under the project's last-touch attribution rule.
 
 ## Repository structure
 
@@ -116,6 +128,7 @@ These are generated locally when you run the project and are not intended to be 
 - `funnel_kpis.csv`
 - `campaign_performance.csv`
 - `campaign_attribution.csv`
+- `data_quality_checks.csv`
 - `segment_performance.csv`
 - `region_performance.csv`
 - `campaign_type_performance.csv`
@@ -131,6 +144,7 @@ The current version already covers the main pieces of the project:
 - funnel, campaign, segment, region, and campaign-type reporting
 - monthly trend reporting for sends, engagement, conversions, and revenue
 - explicit last-touch attribution for won revenue by campaign
+- data-quality checks covering key IDs, joins, stage order, and revenue integrity
 - a recommendation layer that turns the metrics into practical next actions
 - a lightweight dashboard for exploring the outputs without digging through raw files
 - tests that check synthetic data realism and metric sanity
@@ -140,6 +154,7 @@ The current version already covers the main pieces of the project:
 - Which campaign types have better click and conversion performance?
 - Is performance improving month to month, or are results concentrated in one short spike?
 - Which campaigns are driving won revenue under the project's attribution rule?
+- Are the core tables and stage transitions internally consistent enough to trust the outputs?
 - Which segments move from MQL to SQL most effectively?
 - Which segments create the most revenue per contact?
 - Which regions and campaign types perform best?
@@ -149,7 +164,7 @@ The current version already covers the main pieces of the project:
 ## Dashboard
 
 A lightweight Streamlit dashboard is included in `dashboard/app.py`.
-It surfaces the main KPIs, monthly momentum, attributed revenue drivers, campaign and segment comparisons, region and campaign-type views, funnel drop-off, and recommended next actions in one place.
+It surfaces the main KPIs, monthly momentum, attributed revenue drivers, data-quality checks, campaign and segment comparisons, region and campaign-type views, funnel drop-off, and recommended next actions in one place.
 
 ## Attribution assumption
 
@@ -160,10 +175,12 @@ The goal is clarity and explainability, not a claim that one attribution model i
 ## How to use the dashboard
 
 1. Start with the KPI cards to check overall revenue, open rate, click-to-open rate, and conversion rate.
-2. Review the funnel chart to see where leads drop off between sends, engagement, MQL, SQL, and won deals.
-3. Compare the top campaign table to spot which campaign types are worth repeating.
-4. Compare the segment table to see which audiences create the most value.
-5. Use the recommendation panel as a plain-language guide for what to improve next.
+2. Review the momentum section to see whether sends, engagement, conversions, and won deals are building steadily or concentrated in a short period.
+3. Review the funnel chart to see where leads drop off between sends, engagement, MQL, SQL, and won deals.
+4. Check the data-quality table to confirm the synthetic pipeline passed its core integrity checks before trusting the outputs.
+5. Compare the top campaign, segment, region, and campaign-type tables to see which audiences and formats create the most value.
+6. Use the attribution table to see which campaigns are receiving won-revenue credit under the current model.
+7. Use the recommendation panel as a plain-language guide for what to improve next.
 
 ## Safety and quality notes
 

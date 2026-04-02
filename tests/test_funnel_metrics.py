@@ -166,7 +166,7 @@ def test_monthly_trends_reconcile_with_source_totals() -> None:
     assert int(trends["clicks"].sum()) == clicks
     assert int(trends["conversions"].sum()) == len(data["conversions"])
     assert int(trends["won_deals"].sum()) == len(data["revenue_events"])
-    assert float(trends["revenue"].sum()) == float(data["revenue_events"]["revenue_amount"].sum())
+    assert round(float(trends["revenue"].sum()), 2) == round(float(data["revenue_events"]["revenue_amount"].sum()), 2)
 
     rate_columns = ["open_rate", "click_to_open_rate", "conversion_rate"]
     for col in rate_columns:

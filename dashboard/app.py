@@ -19,6 +19,7 @@ REQUIRED_FILES = [
     "funnel_kpis.csv",
     "monthly_trends.csv",
     "campaign_attribution.csv",
+    "data_quality_checks.csv",
     "campaign_performance.csv",
     "segment_performance.csv",
     "region_performance.csv",
@@ -54,6 +55,7 @@ def load_processed_data() -> dict[str, pd.DataFrame]:
         "funnel_kpis": pd.read_csv(DATA_DIR / "funnel_kpis.csv"),
         "monthly_trends": pd.read_csv(DATA_DIR / "monthly_trends.csv"),
         "campaign_attribution": pd.read_csv(DATA_DIR / "campaign_attribution.csv"),
+        "data_quality_checks": pd.read_csv(DATA_DIR / "data_quality_checks.csv"),
         "campaign_performance": pd.read_csv(DATA_DIR / "campaign_performance.csv"),
         "segment_performance": pd.read_csv(DATA_DIR / "segment_performance.csv"),
         "region_performance": pd.read_csv(DATA_DIR / "region_performance.csv"),
@@ -106,6 +108,7 @@ def main() -> None:
     campaign_attribution = data["campaign_attribution"].sort_values(
         "attributed_revenue", ascending=False, ignore_index=True
     )
+    data_quality_checks = data["data_quality_checks"].copy()
     campaign_perf = data["campaign_performance"].sort_values("revenue", ascending=False, ignore_index=True)
     segment_perf = data["segment_performance"].sort_values("revenue", ascending=False, ignore_index=True)
     region_perf = data["region_performance"].sort_values("revenue", ascending=False, ignore_index=True)
@@ -133,6 +136,11 @@ def main() -> None:
     metric_cols[1].metric("Open rate", _format_rate(kpi_row["open_rate"]))
     metric_cols[2].metric("Click-to-open", _format_rate(kpi_row["click_to_open_rate"]))
     metric_cols[3].metric("Conversion rate", _format_rate(kpi_row["conversion_rate"]))
+
+    passed_checks = int((data_quality_checks["status"] == "pass").sum())
+    total_checks = len(data_quality_checks)
+    failed_checks = total_checks - passed_checks
+    st.caption(f"Data quality checks: {passed_checks}/{total_checks} passing, {failed_checks} failing.")
 
     st.subheader("Momentum over time")
     trend_col, trend_detail_col = st.columns(2)
@@ -163,6 +171,10 @@ def main() -> None:
                 f"**Action:** {row['recommended_action']}  \n"
                 f"*Evidence:* {row['evidence']}"
             )
+
+    st.subheader("Data quality checks")
+    quality_view = data_quality_checks[["check_name", "status", "failed_rows", "detail"]].copy()
+    st.dataframe(quality_view, hide_index=True, use_container_width=True)
 
     campaign_col, segment_col = st.columns(2)
 

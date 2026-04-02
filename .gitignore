@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+.python-version
+
+# Jupyter / local exploration
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Logs and local runtime output
+*.log
+logs/
+.streamlit/secrets.toml
+
+# Data outputs
+data/processed/*.csv
+data/processed/*.duckdb
+!data/processed/.gitkeep
+
+# Internal working notes
+docs/now.md
+docs/project-journal.md
+.github/copilot-instructions.md
+.github/agents/
+
+# Environment files and secrets
+.env
+.env.*
+*.env
+!.env.example
+secrets.*
+*.pem
+*.key
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/*.code-workspace

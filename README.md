@@ -11,7 +11,7 @@ This is a public portfolio repository built with synthetic data only. No confide
 ## Current project status
 
 PipelineIQ is now in a solid v1 state.
-It already includes a reproducible synthetic data pipeline, tested funnel metrics, decision-support outputs, and a Streamlit dashboard for exploring campaign, segment, region, and campaign-type performance.
+It already includes a reproducible synthetic data pipeline, tested funnel metrics, monthly trend reporting, explicit last-touch attribution, decision-support outputs, and a Streamlit dashboard for exploring campaign, segment, region, and campaign-type performance.
 
 ## Why this project exists
 
@@ -38,6 +38,7 @@ This is the starting stack, not a permanent rule. If the project needs a differe
 - Where do leads drop out of the funnel?
 - Which audiences are underperforming or inactive?
 - Which regions and campaign types create the most value?
+- Which campaigns are actually getting credit for won revenue under a clear attribution rule?
 - What should the business do next based on the current results?
 
 ## Dashboard preview
@@ -114,6 +115,7 @@ These are generated locally when you run the project and are not intended to be 
 - `revenue_events.csv`
 - `funnel_kpis.csv`
 - `campaign_performance.csv`
+- `campaign_attribution.csv`
 - `segment_performance.csv`
 - `region_performance.csv`
 - `campaign_type_performance.csv`
@@ -127,6 +129,8 @@ The current version already covers the main pieces of the project:
 - synthetic CRM-style data generation across contacts, campaigns, sends, events, lead stages, conversions, opportunities, and revenue
 - realistic targeting fields for segment, region, industry, and engagement level
 - funnel, campaign, segment, region, and campaign-type reporting
+- monthly trend reporting for sends, engagement, conversions, and revenue
+- explicit last-touch attribution for won revenue by campaign
 - a recommendation layer that turns the metrics into practical next actions
 - a lightweight dashboard for exploring the outputs without digging through raw files
 - tests that check synthetic data realism and metric sanity
@@ -134,6 +138,8 @@ The current version already covers the main pieces of the project:
 ## Business questions the project can already answer
 
 - Which campaign types have better click and conversion performance?
+- Is performance improving month to month, or are results concentrated in one short spike?
+- Which campaigns are driving won revenue under the project's attribution rule?
 - Which segments move from MQL to SQL most effectively?
 - Which segments create the most revenue per contact?
 - Which regions and campaign types perform best?
@@ -143,7 +149,13 @@ The current version already covers the main pieces of the project:
 ## Dashboard
 
 A lightweight Streamlit dashboard is included in `dashboard/app.py`.
-It surfaces the main KPIs, campaign and segment comparisons, region and campaign-type views, funnel drop-off, and recommended next actions in one place.
+It surfaces the main KPIs, monthly momentum, attributed revenue drivers, campaign and segment comparisons, region and campaign-type views, funnel drop-off, and recommended next actions in one place.
+
+## Attribution assumption
+
+PipelineIQ uses a simple last-touch attribution rule for won revenue.
+In this project, that means won revenue is credited to the campaign attached to the conversion record, which represents the most recent clicked campaign in the synthetic funnel.
+The goal is clarity and explainability, not a claim that one attribution model is universally correct.
 
 ## How to use the dashboard
 

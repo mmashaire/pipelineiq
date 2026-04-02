@@ -13,6 +13,13 @@ def _rate(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
     return (numerator / denominator.clip(lower=1)).astype(float)
 
 
+def _bounded_rate(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
+    """Return a rate series that resolves zero-denominator rows to zero."""
+
+    rate = numerator.astype(float).div(denominator.astype(float).where(denominator > 0))
+    return rate.fillna(0.0)
+
+
 def _compute_contact_dimension_performance(data: Dict[str, pd.DataFrame], dimension: str) -> pd.DataFrame:
     """Compute contact-based performance metrics grouped by a contact attribute."""
 
@@ -130,6 +137,101 @@ def compute_funnel_kpis(data: Dict[str, pd.DataFrame]) -> pd.DataFrame:
             }
         ]
     )
+
+
+def compute_monthly_trends(data: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Compute a compact monthly trend view for the main funnel signals."""
+
+    sends = data["email_sends"][["send_id", "send_timestamp"]].copy()
+    events = data["email_events"][["event_type", "event_timestamp"]].copy()
+    conversions = data["conversions"][["conversion_id", "conversion_timestamp"]].copy()
+    revenue = data["revenue_events"][["opportunity_id", "revenue_amount", "revenue_timestamp"]].copy()
+
+    month_frames: list[pd.Series] = []
+    for frame, timestamp_col in (
+        (sends, "send_timestamp"),
+        (events, "event_timestamp"),
+        (conversions, "conversion_timestamp"),
+        (revenue, "revenue_timestamp"),
+    ):
+        if not frame.empty:
+            month_frames.append(pd.to_datetime(frame[timestamp_col]).dt.to_period("M").dt.to_timestamp())
+
+    if not month_frames:
+        return pd.DataFrame(
+            columns=[
+                "month",
+                "sends",
+                "opens",
+                "clicks",
+                "conversions",
+                "won_deals",
+                "revenue",
+                "open_rate",
+                "click_to_open_rate",
+                "conversion_rate",
+                "revenue_per_send",
+            ]
+        )
+
+    months = pd.DataFrame({"month": pd.Index(pd.concat(month_frames).drop_duplicates()).sort_values()})
+
+    sends_agg = (
+        sends.assign(month=pd.to_datetime(sends["send_timestamp"]).dt.to_period("M").dt.to_timestamp())
+        .groupby("month", as_index=False)
+        .agg(sends=("send_id", "count"))
+    )
+
+    if events.empty:
+        event_agg = pd.DataFrame(columns=["month", "opens", "clicks"])
+    else:
+        event_agg = (
+            events.assign(month=pd.to_datetime(events["event_timestamp"]).dt.to_period("M").dt.to_timestamp())
+            .pivot_table(
+                index="month",
+                columns="event_type",
+                values="event_timestamp",
+                aggfunc="count",
+                fill_value=0,
+            )
+            .reset_index()
+            .rename_axis(None, axis=1)
+            .rename(columns={"open": "opens", "click": "clicks"})
+        )
+
+    if conversions.empty:
+        conv_agg = pd.DataFrame(columns=["month", "conversions"])
+    else:
+        conv_agg = (
+            conversions.assign(
+                month=pd.to_datetime(conversions["conversion_timestamp"]).dt.to_period("M").dt.to_timestamp()
+            )
+            .groupby("month", as_index=False)
+            .agg(conversions=("conversion_id", "count"))
+        )
+
+    if revenue.empty:
+        revenue_agg = pd.DataFrame(columns=["month", "won_deals", "revenue"])
+    else:
+        revenue_agg = (
+            revenue.assign(month=pd.to_datetime(revenue["revenue_timestamp"]).dt.to_period("M").dt.to_timestamp())
+            .groupby("month", as_index=False)
+            .agg(won_deals=("opportunity_id", "count"), revenue=("revenue_amount", "sum"))
+        )
+
+    trends = months.merge(sends_agg, on="month", how="left")
+    trends = trends.merge(event_agg, on="month", how="left")
+    trends = trends.merge(conv_agg, on="month", how="left")
+    trends = trends.merge(revenue_agg, on="month", how="left")
+    trends = trends.fillna(0)
+
+    trends["open_rate"] = _bounded_rate(trends["opens"], trends["sends"])
+    trends["click_to_open_rate"] = _bounded_rate(trends["clicks"], trends["opens"])
+    trends["conversion_rate"] = _bounded_rate(trends["conversions"], trends["sends"])
+    trends["revenue_per_send"] = _bounded_rate(trends["revenue"], trends["sends"])
+    trends["month"] = pd.to_datetime(trends["month"]).dt.strftime("%Y-%m")
+
+    return trends.sort_values("month", ignore_index=True)
 
 
 def compute_campaign_performance(data: Dict[str, pd.DataFrame]) -> pd.DataFrame:
@@ -263,3 +365,56 @@ def compute_campaign_type_performance(data: Dict[str, pd.DataFrame]) -> pd.DataF
     perf["revenue_per_campaign"] = _rate(perf["revenue"], perf["campaigns"])
 
     return perf.sort_values("revenue", ascending=False, ignore_index=True)
+
+
+def compute_campaign_attribution(data: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Compute explicit last-touch attribution for won revenue by campaign.
+
+    Attribution follows the campaign recorded on each conversion, which is the
+    last clicked campaign in the synthetic funnel.
+    """
+
+    campaigns = data["campaigns"][["campaign_id", "campaign_name", "campaign_type"]].copy()
+    conversions = data["conversions"][["conversion_id", "campaign_id", "contact_id"]].copy()
+    opportunities = data["opportunities"][["conversion_id", "opportunity_id", "stage"]].copy()
+    revenue = data["revenue_events"][["opportunity_id", "revenue_amount", "revenue_timestamp"]].copy()
+
+    won_revenue = opportunities.loc[opportunities["stage"] == "Won"].merge(
+        conversions, on="conversion_id", how="inner"
+    )
+    won_revenue = won_revenue.merge(revenue, on="opportunity_id", how="inner")
+
+    if won_revenue.empty:
+        attribution = campaigns.copy()
+        attribution["won_deals"] = 0
+        attribution["attributed_revenue"] = 0.0
+        attribution["average_deal_size"] = 0.0
+        attribution["revenue_share"] = 0.0
+        attribution["attribution_model"] = "last_touch"
+        return attribution.sort_values("campaign_name", ignore_index=True)
+
+    attribution = won_revenue.groupby("campaign_id", as_index=False).agg(
+        won_deals=("opportunity_id", "count"),
+        attributed_revenue=("revenue_amount", "sum"),
+        latest_revenue_month=("revenue_timestamp", lambda values: pd.to_datetime(values).max().strftime("%Y-%m")),
+    )
+    attribution = campaigns.merge(attribution, on="campaign_id", how="left").fillna(
+        {
+            "won_deals": 0,
+            "attributed_revenue": 0.0,
+            "latest_revenue_month": "-",
+        }
+    )
+
+    attribution["average_deal_size"] = _rate(attribution["attributed_revenue"], attribution["won_deals"])
+    total_revenue = float(attribution["attributed_revenue"].sum())
+    if total_revenue > 0:
+        attribution["revenue_share"] = attribution["attributed_revenue"] / total_revenue
+    else:
+        attribution["revenue_share"] = 0.0
+    attribution["attribution_model"] = "last_touch"
+    attribution["attributed_revenue"] = attribution["attributed_revenue"].round(2)
+    attribution["average_deal_size"] = attribution["average_deal_size"].round(2)
+    attribution["revenue_share"] = attribution["revenue_share"].round(6)
+
+    return attribution.sort_values("attributed_revenue", ascending=False, ignore_index=True)

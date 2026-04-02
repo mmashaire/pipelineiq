@@ -17,6 +17,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "data" / "processed"
 REQUIRED_FILES = [
     "funnel_kpis.csv",
+    "monthly_trends.csv",
+    "campaign_attribution.csv",
     "campaign_performance.csv",
     "segment_performance.csv",
     "region_performance.csv",
@@ -50,6 +52,8 @@ def load_processed_data() -> dict[str, pd.DataFrame]:
 
     return {
         "funnel_kpis": pd.read_csv(DATA_DIR / "funnel_kpis.csv"),
+        "monthly_trends": pd.read_csv(DATA_DIR / "monthly_trends.csv"),
+        "campaign_attribution": pd.read_csv(DATA_DIR / "campaign_attribution.csv"),
         "campaign_performance": pd.read_csv(DATA_DIR / "campaign_performance.csv"),
         "segment_performance": pd.read_csv(DATA_DIR / "segment_performance.csv"),
         "region_performance": pd.read_csv(DATA_DIR / "region_performance.csv"),
@@ -98,6 +102,10 @@ def main() -> None:
         return
 
     funnel_kpis = data["funnel_kpis"]
+    monthly_trends = data["monthly_trends"].sort_values("month", ignore_index=True)
+    campaign_attribution = data["campaign_attribution"].sort_values(
+        "attributed_revenue", ascending=False, ignore_index=True
+    )
     campaign_perf = data["campaign_performance"].sort_values("revenue", ascending=False, ignore_index=True)
     segment_perf = data["segment_performance"].sort_values("revenue", ascending=False, ignore_index=True)
     region_perf = data["region_performance"].sort_values("revenue", ascending=False, ignore_index=True)
@@ -125,6 +133,19 @@ def main() -> None:
     metric_cols[1].metric("Open rate", _format_rate(kpi_row["open_rate"]))
     metric_cols[2].metric("Click-to-open", _format_rate(kpi_row["click_to_open_rate"]))
     metric_cols[3].metric("Conversion rate", _format_rate(kpi_row["conversion_rate"]))
+
+    st.subheader("Momentum over time")
+    trend_col, trend_detail_col = st.columns(2)
+
+    with trend_col:
+        st.line_chart(monthly_trends.set_index("month")[["sends", "opens", "conversions", "won_deals"]])
+
+    with trend_detail_col:
+        trend_view = monthly_trends[["month", "open_rate", "conversion_rate", "revenue"]].copy()
+        trend_view["open_rate"] = trend_view["open_rate"].map(_format_rate)
+        trend_view["conversion_rate"] = trend_view["conversion_rate"].map(_format_rate)
+        trend_view["revenue"] = trend_view["revenue"].map(_format_currency)
+        st.dataframe(trend_view, hide_index=True, use_container_width=True)
 
     left_col, right_col = st.columns(2)
 
@@ -165,6 +186,32 @@ def main() -> None:
         segment_view["revenue_per_contact"] = segment_view["revenue_per_contact"].map(_format_currency)
         segment_view["revenue"] = segment_view["revenue"].map(_format_currency)
         st.dataframe(segment_view, hide_index=True, use_container_width=True)
+
+    attribution_col, attribution_note_col = st.columns(2)
+
+    with attribution_col:
+        st.subheader("Attributed revenue drivers")
+        attribution_view = campaign_attribution.head(6)[
+            ["campaign_name", "campaign_type", "won_deals", "attributed_revenue", "revenue_share"]
+        ].copy()
+        attribution_view["attributed_revenue"] = attribution_view["attributed_revenue"].map(_format_currency)
+        attribution_view["revenue_share"] = attribution_view["revenue_share"].map(_format_rate)
+        st.dataframe(attribution_view, hide_index=True, use_container_width=True)
+
+    with attribution_note_col:
+        st.subheader("Attribution assumption")
+        st.write(
+            "Won revenue is attributed with a simple last-touch model. In this project, that means revenue is "
+            "credited to the campaign attached to the conversion record, which represents the most recent clicked "
+            "campaign in the synthetic funnel."
+        )
+        top_attribution = campaign_attribution.iloc[0]
+        st.markdown(
+            f"**Top attributed revenue source:** `{top_attribution['campaign_name']}`  \n"
+            f"**Model:** `{top_attribution['attribution_model']}`  \n"
+            f"**Won deals:** {int(top_attribution['won_deals'])}  \n"
+            f"**Revenue share:** {_format_rate(top_attribution['revenue_share'])}"
+        )
 
     region_col, format_col = st.columns(2)
 

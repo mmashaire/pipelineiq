@@ -144,7 +144,7 @@ The current version already covers the main pieces of the project:
 - funnel, campaign, segment, region, and campaign-type reporting
 - monthly trend reporting for sends, engagement, conversions, and revenue
 - explicit last-touch attribution for won revenue by campaign
-- data-quality checks covering key IDs, joins, stage order, and revenue integrity
+- data-quality checks covering key IDs, record uniqueness, joins, stage order, and revenue integrity
 - a recommendation layer that turns the metrics into practical next actions
 - a lightweight dashboard for exploring the outputs without digging through raw files
 - tests that check synthetic data realism and metric sanity

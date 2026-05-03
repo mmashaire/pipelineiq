@@ -50,6 +50,16 @@ def run_data_quality_checks(data: Dict[str, pd.DataFrame]) -> pd.DataFrame:
         )
     )
 
+    duplicate_sends = int(sends["send_id"].duplicated().sum())
+    results.append(
+        _build_check_result(
+            check_name="unique_send_ids",
+            status="pass" if duplicate_sends == 0 else "fail",
+            detail="Each send should have a unique send_id.",
+            failed_rows=duplicate_sends,
+        )
+    )
+
     orphan_sends = int((~sends["contact_id"].isin(contacts["contact_id"])).sum()) + int(
         (~sends["campaign_id"].isin(campaigns["campaign_id"])).sum()
     )
@@ -91,6 +101,36 @@ def run_data_quality_checks(data: Dict[str, pd.DataFrame]) -> pd.DataFrame:
             status="pass" if orphan_revenue == 0 else "fail",
             detail="Every revenue event should map to an existing opportunity.",
             failed_rows=orphan_revenue,
+        )
+    )
+
+    duplicate_conversions = int(conversions["conversion_id"].duplicated().sum())
+    results.append(
+        _build_check_result(
+            check_name="unique_conversion_ids",
+            status="pass" if duplicate_conversions == 0 else "fail",
+            detail="Each conversion should have a unique conversion_id.",
+            failed_rows=duplicate_conversions,
+        )
+    )
+
+    duplicate_opportunities = int(opportunities["opportunity_id"].duplicated().sum())
+    results.append(
+        _build_check_result(
+            check_name="unique_opportunity_ids",
+            status="pass" if duplicate_opportunities == 0 else "fail",
+            detail="Each opportunity should have a unique opportunity_id.",
+            failed_rows=duplicate_opportunities,
+        )
+    )
+
+    duplicate_revenue_events = int(revenue["revenue_event_id"].duplicated().sum()) if not revenue.empty else 0
+    results.append(
+        _build_check_result(
+            check_name="unique_revenue_event_ids",
+            status="pass" if duplicate_revenue_events == 0 else "fail",
+            detail="Each revenue event should have a unique revenue_event_id.",
+            failed_rows=duplicate_revenue_events,
         )
     )
 

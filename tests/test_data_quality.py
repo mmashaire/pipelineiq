@@ -24,6 +24,17 @@ def test_data_quality_checks_flag_orphan_send_records() -> None:
     assert int(checks.loc["send_foreign_keys", "failed_rows"]) >= 1
 
 
+def test_data_quality_checks_flag_duplicate_send_ids() -> None:
+    data = generate_pipeline_data(GenerationConfig(n_contacts=300, n_campaigns=8, seed=71))
+    duplicated_send = data["email_sends"].iloc[[0]].copy()
+    data["email_sends"] = pd.concat([data["email_sends"], duplicated_send], ignore_index=True)
+
+    checks = run_data_quality_checks(data).set_index("check_name")
+
+    assert checks.loc["unique_send_ids", "status"] == "fail"
+    assert int(checks.loc["unique_send_ids", "failed_rows"]) >= 1
+
+
 def test_data_quality_checks_flag_non_won_revenue() -> None:
     data = generate_pipeline_data(GenerationConfig(n_contacts=500, n_campaigns=10, seed=73))
 
